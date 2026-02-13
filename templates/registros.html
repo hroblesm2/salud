@@ -1,0 +1,667 @@
+{% extends "base.html" %}
+
+{% block title %}Registros - Sistema de Datos Clínicos{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="card shadow">
+            <div class="card-header bg-primary text-white">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h4 class="mb-0">
+                        <i class="bi bi-table"></i> Registros de Atenciones Clínicas
+                    </h4>
+                    <div>
+                        <button onclick="exportarExcel()" class="btn btn-success btn-sm">
+                            <i class="bi bi-file-earmark-excel"></i> Exportar Excel
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div class="card-body">
+                <!-- Filtros -->
+                <div class="row mb-3">
+                    <div class="col-md-3">
+                        <input type="text" class="form-control" id="filtroGeneral" placeholder="Buscar...">
+                    </div>
+                    <div class="col-md-2">
+                        <select class="form-select" id="filtroGenero">
+                            <option value="">Todos los géneros</option>
+                            <option value="M">Masculino</option>
+                            <option value="F">Femenino</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <input type="date" class="form-control" id="filtroFechaDesde" placeholder="Desde">
+                    </div>
+                    <div class="col-md-2">
+                        <input type="date" class="form-control" id="filtroFechaHasta" placeholder="Hasta">
+                    </div>
+                    <div class="col-md-3">
+                        <button onclick="aplicarFiltros()" class="btn btn-primary">
+                            <i class="bi bi-funnel"></i> Filtrar
+                        </button>
+                        <button onclick="limpiarFiltros()" class="btn btn-secondary">
+                            <i class="bi bi-x-circle"></i> Limpiar
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Tabla de registros -->
+                <div class="table-responsive">
+                    <table class="table table-striped table-hover" id="tablaRegistros">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>ID</th>
+                                <th>Fecha Atención</th>
+                                <th>UPS</th>
+                                <th>Género</th>
+                                <th>Edad</th>
+                                <th>Peso (kg)</th>
+                                <th>Talla (cm)</th>
+                                <th>Hemoglobina</th>
+                                <th>Diagnóstico</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="cuerpoTabla">
+                            <tr>
+                                <td colspan="10" class="text-center">
+                                    <div class="spinner-border text-primary" role="status">
+                                        <span class="visually-hidden">Cargando...</span>
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Paginación -->
+                <div class="d-flex justify-content-between align-items-center mt-3">
+                    <div>
+                        <span id="infoRegistros">Mostrando 0 de 0 registros</span>
+                    </div>
+                    <nav>
+                        <ul class="pagination mb-0" id="paginacion">
+                        </ul>
+                    </nav>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para ver detalles -->
+<div class="modal fade" id="modalDetalle" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title">
+                    <i class="bi bi-eye"></i> Detalle de Atención
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="detalleContenido">
+                <div class="text-center">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Cargando...</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para editar -->
+<div class="modal fade" id="modalEditar" tabindex="-1">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header bg-warning">
+                <h5 class="modal-title">
+                    <i class="bi bi-pencil"></i> Editar Atención
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="formEditar">
+                    <input type="hidden" id="edit_id" name="id">
+                    
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Fecha de Atención</label>
+                            <input type="date" class="form-control" id="edit_fecha_atencion" required>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">UPS</label>
+                            <input type="text" class="form-control" id="edit_descripcion_ups">
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Turno</label>
+                            <select class="form-select" id="edit_id_turno">
+                                <option value="">Seleccione...</option>
+                                <option value="M">Mañana</option>
+                                <option value="T">Tarde</option>
+                                <option value="N">Noche</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-3 mb-3">
+                            <label class="form-label">Sector</label>
+                            <input type="text" class="form-control" id="edit_descripcion_sector">
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <label class="form-label">DISA</label>
+                            <input type="text" class="form-control" id="edit_descripcion_disa">
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <label class="form-label">Red</label>
+                            <input type="text" class="form-control" id="edit_descripcion_red">
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <label class="form-label">Micro Red</label>
+                            <input type="text" class="form-control" id="edit_descripcion_microred">
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Género</label>
+                            <select class="form-select" id="edit_genero" required>
+                                <option value="">Seleccione...</option>
+                                <option value="M">Masculino</option>
+                                <option value="F">Femenino</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Edad</label>
+                            <input type="number" class="form-control" id="edit_edad_reg" min="0" max="120" required>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Fecha Última Regla</label>
+                            <input type="date" class="form-control" id="edit_fecha_ultima_regla">
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Peso (kg)</label>
+                            <input type="number" class="form-control" id="edit_peso" step="0.01">
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Talla (cm)</label>
+                            <input type="number" class="form-control" id="edit_talla" step="0.01">
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Hemoglobina (g/dL)</label>
+                            <input type="number" class="form-control" id="edit_hemoglobina" step="0.1">
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Descripción del Item</label>
+                        <textarea class="form-control" id="edit_descripcion_item" rows="3"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" onclick="guardarEdicion()" class="btn btn-primary">
+                    <i class="bi bi-save"></i> Guardar Cambios
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    let registros = [];
+    let registrosFiltrados = [];
+    let paginaActual = 1;
+    const registrosPorPagina = 10;
+
+    async function cargarRegistros() {
+        try {
+            const response = await fetch('/api/obtener_atenciones');
+            const result = await response.json();
+            
+            if (result.success) {
+                registros = result.data;
+                registrosFiltrados = registros;
+                mostrarRegistros();
+            }
+        } catch (error) {
+            console.error('Error al cargar registros:', error);
+            Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: 'No se pudieron cargar los registros'
+            });
+        }
+    }
+
+    function mostrarRegistros() {
+        const inicio = (paginaActual - 1) * registrosPorPagina;
+        const fin = inicio + registrosPorPagina;
+        const registrosPagina = registrosFiltrados.slice(inicio, fin);
+        
+        let html = '';
+        
+        if (registrosPagina.length === 0) {
+            html = '<tr><td colspan="10" class="text-center">No hay registros para mostrar</td></tr>';
+        } else {
+            registrosPagina.forEach(reg => {
+                const diagnostico = reg.descripcion_item ? 
+                    (reg.descripcion_item.length > 50 ? reg.descripcion_item.substring(0, 50) + '...' : reg.descripcion_item) 
+                    : '-';
+                
+                html += `
+                    <tr>
+                        <td>${reg.id}</td>
+                        <td>${reg.fecha_atencion ? new Date(reg.fecha_atencion).toLocaleDateString() : '-'}</td>
+                        <td>${reg.descripcion_ups || '-'}</td>
+                        <td>${reg.genero === 'M' ? 'Masculino' : reg.genero === 'F' ? 'Femenino' : '-'}</td>
+                        <td>${reg.edad_reg || '-'}</td>
+                        <td>${reg.peso || '-'}</td>
+                        <td>${reg.talla || '-'}</td>
+                        <td>${reg.hemoglobina || '-'}</td>
+                        <td title="${reg.descripcion_item || ''}">${diagnostico}</td>
+                        <td>
+                            <div class="btn-group" role="group">
+                                <button onclick="verDetalle(${reg.id})" class="btn btn-sm btn-info" title="Ver detalle">
+                                    <i class="bi bi-eye"></i>
+                                </button>
+                                <button onclick="editarRegistro(${reg.id})" class="btn btn-sm btn-warning" title="Editar">
+                                    <i class="bi bi-pencil"></i>
+                                </button>
+                                <button onclick="eliminarRegistro(${reg.id})" class="btn btn-sm btn-danger" title="Eliminar">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            });
+        }
+        
+        $('#cuerpoTabla').html(html);
+        
+        // Actualizar información
+        $('#infoRegistros').text(`Mostrando ${inicio + 1} a ${Math.min(fin, registrosFiltrados.length)} de ${registrosFiltrados.length} registros`);
+        
+        // Actualizar paginación
+        mostrarPaginacion();
+    }
+
+    function mostrarPaginacion() {
+        const totalPaginas = Math.ceil(registrosFiltrados.length / registrosPorPagina);
+        let html = '';
+        
+        // Botón anterior
+        html += `
+            <li class="page-item ${paginaActual === 1 ? 'disabled' : ''}">
+                <a class="page-link" href="#" onclick="cambiarPagina(${paginaActual - 1}); return false;">Anterior</a>
+            </li>
+        `;
+        
+        // Páginas
+        for (let i = 1; i <= totalPaginas; i++) {
+            if (i === 1 || i === totalPaginas || (i >= paginaActual - 2 && i <= paginaActual + 2)) {
+                html += `
+                    <li class="page-item ${i === paginaActual ? 'active' : ''}">
+                        <a class="page-link" href="#" onclick="cambiarPagina(${i}); return false;">${i}</a>
+                    </li>
+                `;
+            } else if (i === paginaActual - 3 || i === paginaActual + 3) {
+                html += '<li class="page-item disabled"><span class="page-link">...</span></li>';
+            }
+        }
+        
+        // Botón siguiente
+        html += `
+            <li class="page-item ${paginaActual === totalPaginas || totalPaginas === 0 ? 'disabled' : ''}">
+                <a class="page-link" href="#" onclick="cambiarPagina(${paginaActual + 1}); return false;">Siguiente</a>
+            </li>
+        `;
+        
+        $('#paginacion').html(html);
+    }
+
+    function cambiarPagina(pagina) {
+        const totalPaginas = Math.ceil(registrosFiltrados.length / registrosPorPagina);
+        if (pagina >= 1 && pagina <= totalPaginas) {
+            paginaActual = pagina;
+            mostrarRegistros();
+        }
+    }
+
+    function aplicarFiltros() {
+        const filtroTexto = $('#filtroGeneral').val().toLowerCase();
+        const filtroGen = $('#filtroGenero').val();
+        const filtroDesde = $('#filtroFechaDesde').val();
+        const filtroHasta = $('#filtroFechaHasta').val();
+        
+        registrosFiltrados = registros.filter(reg => {
+            // Filtro de texto general
+            if (filtroTexto && !JSON.stringify(reg).toLowerCase().includes(filtroTexto)) {
+                return false;
+            }
+            
+            // Filtro de género
+            if (filtroGen && reg.genero !== filtroGen) {
+                return false;
+            }
+            
+            // Filtro de fecha desde
+            if (filtroDesde && reg.fecha_atencion) {
+                const fechaReg = new Date(reg.fecha_atencion);
+                const fechaDesde = new Date(filtroDesde);
+                if (fechaReg < fechaDesde) {
+                    return false;
+                }
+            }
+            
+            // Filtro de fecha hasta
+            if (filtroHasta && reg.fecha_atencion) {
+                const fechaReg = new Date(reg.fecha_atencion);
+                const fechaHasta = new Date(filtroHasta);
+                if (fechaReg > fechaHasta) {
+                    return false;
+                }
+            }
+            
+            return true;
+        });
+        
+        paginaActual = 1;
+        mostrarRegistros();
+    }
+
+    function limpiarFiltros() {
+        $('#filtroGeneral').val('');
+        $('#filtroGenero').val('');
+        $('#filtroFechaDesde').val('');
+        $('#filtroFechaHasta').val('');
+        registrosFiltrados = registros;
+        paginaActual = 1;
+        mostrarRegistros();
+    }
+
+    async function verDetalle(id) {
+        try {
+            const response = await fetch(`/api/obtener_atencion/${id}`);
+            const result = await response.json();
+            
+            if (result.success) {
+                const reg = result.data;
+                let html = `
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <strong>Fecha de Atención:</strong><br>
+                            ${reg.fecha_atencion ? new Date(reg.fecha_atencion).toLocaleString() : '-'}
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <strong>Turno:</strong><br>
+                            ${reg.id_turno === 'M' ? 'Mañana' : reg.id_turno === 'T' ? 'Tarde' : reg.id_turno === 'N' ? 'Noche' : '-'}
+                        </div>
+                    </div>
+                    
+                    <hr>
+                    <h6>Ubicación</h6>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <strong>UPS:</strong><br>${reg.descripcion_ups || '-'}
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <strong>Sector:</strong><br>${reg.descripcion_sector || '-'}
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <strong>DISA:</strong><br>${reg.descripcion_disa || '-'}
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <strong>Red:</strong><br>${reg.descripcion_red || '-'}
+                        </div>
+                        <div class="col-md-12 mb-3">
+                            <strong>Micro Red:</strong><br>${reg.descripcion_microred || '-'}
+                        </div>
+                    </div>
+                    
+                    <hr>
+                    <h6>Datos del Paciente</h6>
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <strong>Género:</strong><br>
+                            ${reg.genero === 'M' ? 'Masculino' : reg.genero === 'F' ? 'Femenino' : '-'}
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <strong>Edad:</strong><br>${reg.edad_reg || '-'} años
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <strong>Fecha Última Regla:</strong><br>
+                            ${reg.fecha_ultima_regla ? new Date(reg.fecha_ultima_regla).toLocaleDateString() : '-'}
+                        </div>
+                    </div>
+                    
+                    <hr>
+                    <h6>Datos Clínicos</h6>
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <strong>Peso:</strong><br>${reg.peso || '-'} kg
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <strong>Talla:</strong><br>${reg.talla || '-'} cm
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <strong>Hemoglobina:</strong><br>${reg.hemoglobina || '-'} g/dL
+                        </div>
+                    </div>
+                    
+                    <hr>
+                    <h6>Diagnóstico / Procedimiento</h6>
+                    <div class="mb-3">
+                        ${reg.descripcion_item || '-'}
+                    </div>
+                    
+                    <hr>
+                    <small class="text-muted">
+                        Registrado el ${reg.fecha_registro ? new Date(reg.fecha_registro).toLocaleString() : '-'} 
+                        por ${reg.usuario_registro || 'Sistema'}
+                    </small>
+                `;
+                
+                $('#detalleContenido').html(html);
+                new bootstrap.Modal($('#modalDetalle')[0]).show();
+            }
+        } catch (error) {
+            console.error('Error:', error);
+        }
+    }
+
+    async function editarRegistro(id) {
+        try {
+            const response = await fetch(`/api/obtener_atencion/${id}`);
+            const result = await response.json();
+            
+            if (result.success) {
+                const reg = result.data;
+                
+                $('#edit_id').val(reg.id);
+                $('#edit_fecha_atencion').val(reg.fecha_atencion ? reg.fecha_atencion.split(' ')[0] : '');
+                $('#edit_descripcion_ups').val(reg.descripcion_ups || '');
+                $('#edit_descripcion_sector').val(reg.descripcion_sector || '');
+                $('#edit_descripcion_disa').val(reg.descripcion_disa || '');
+                $('#edit_descripcion_red').val(reg.descripcion_red || '');
+                $('#edit_descripcion_microred').val(reg.descripcion_microred || '');
+                $('#edit_genero').val(reg.genero || '');
+                $('#edit_edad_reg').val(reg.edad_reg || '');
+                $('#edit_id_turno').val(reg.id_turno || '');
+                $('#edit_descripcion_item').val(reg.descripcion_item || '');
+                $('#edit_peso').val(reg.peso || '');
+                $('#edit_talla').val(reg.talla || '');
+                $('#edit_hemoglobina').val(reg.hemoglobina || '');
+                $('#edit_fecha_ultima_regla').val(reg.fecha_ultima_regla || '');
+                
+                new bootstrap.Modal($('#modalEditar')[0]).show();
+            }
+        } catch (error) {
+            console.error('Error:', error);
+        }
+    }
+
+    async function guardarEdicion() {
+        const id = $('#edit_id').val();
+        const formData = {
+            fecha_atencion: $('#edit_fecha_atencion').val(),
+            descripcion_ups: $('#edit_descripcion_ups').val(),
+            descripcion_sector: $('#edit_descripcion_sector').val(),
+            descripcion_disa: $('#edit_descripcion_disa').val(),
+            descripcion_red: $('#edit_descripcion_red').val(),
+            descripcion_microred: $('#edit_descripcion_microred').val(),
+            genero: $('#edit_genero').val(),
+            edad_reg: $('#edit_edad_reg').val(),
+            id_turno: $('#edit_id_turno').val(),
+            descripcion_item: $('#edit_descripcion_item').val(),
+            peso: $('#edit_peso').val(),
+            talla: $('#edit_talla').val(),
+            hemoglobina: $('#edit_hemoglobina').val(),
+            fecha_ultima_regla: $('#edit_fecha_ultima_regla').val()
+        };
+        
+        try {
+            const response = await fetch(`/api/actualizar_atencion/${id}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(formData)
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                bootstrap.Modal.getInstance($('#modalEditar')[0]).hide();
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Actualizado',
+                    text: result.message,
+                    timer: 2000,
+                    showConfirmButton: false
+                });
+                cargarRegistros();
+            } else {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: result.message
+                });
+            }
+        } catch (error) {
+            Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: 'Error al actualizar: ' + error.message
+            });
+        }
+    }
+
+    async function eliminarRegistro(id) {
+        const result = await Swal.fire({
+            title: '¿Está seguro?',
+            text: 'Esta acción no se puede deshacer',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#3085d6',
+            confirmButtonText: 'Sí, eliminar',
+            cancelButtonText: 'Cancelar'
+        });
+        
+        if (result.isConfirmed) {
+            try {
+                const response = await fetch(`/api/eliminar_atencion/${id}`, {
+                    method: 'DELETE'
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Eliminado',
+                        text: result.message,
+                        timer: 2000,
+                        showConfirmButton: false
+                    });
+                    cargarRegistros();
+                } else {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: result.message
+                    });
+                }
+            } catch (error) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: 'Error al eliminar: ' + error.message
+                });
+            }
+        }
+    }
+
+    async function exportarExcel() {
+        try {
+            Swal.fire({
+                title: 'Exportando...',
+                text: 'Generando archivo Excel',
+                allowOutsideClick: false,
+                didOpen: () => {
+                    Swal.showLoading();
+                }
+            });
+            
+            const response = await fetch('/api/exportar_excel');
+            
+            if (response.ok) {
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'datos_clinicos_' + new Date().toISOString().split('T')[0] + '.xlsx';
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                document.body.removeChild(a);
+                
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Exportado',
+                    text: 'Archivo descargado exitosamente',
+                    timer: 2000
+                });
+            } else {
+                throw new Error('Error en la respuesta');
+            }
+        } catch (error) {
+            Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: 'No se pudo exportar el archivo'
+            });
+        }
+    }
+
+    $(document).ready(() => {
+        cargarRegistros();
+        
+        // Filtro en tiempo real
+        $('#filtroGeneral').on('keyup', function() {
+            aplicarFiltros();
+        });
+    });
+</script>
+{% endblock %}

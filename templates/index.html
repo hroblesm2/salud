@@ -1,0 +1,265 @@
+{% extends "base.html" %}
+
+{% block title %}Inicio - Sistema de Datos Clínicos{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="card shadow-sm mb-4">
+            <div class="card-body text-center py-5">
+                <h1 class="display-4 mb-3">
+                    <i class="bi bi-hospital text-primary"></i>
+                    Sistema de Datos Clínicos
+                </h1>
+                <p class="lead text-muted">
+                    Gestión integral de atenciones médicas y datos clínicos
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card text-white bg-primary shadow-sm">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="card-title text-uppercase mb-0">Total Atenciones</h6>
+                        <h2 class="mb-0 mt-2" id="total-atenciones">-</h2>
+                    </div>
+                    <div>
+                        <i class="bi bi-clipboard2-pulse" style="font-size: 3rem; opacity: 0.5;"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3">
+        <div class="card text-white bg-success shadow-sm">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="card-title text-uppercase mb-0">Peso Promedio</h6>
+                        <h2 class="mb-0 mt-2" id="peso-promedio">-</h2>
+                    </div>
+                    <div>
+                        <i class="bi bi-speedometer2" style="font-size: 3rem; opacity: 0.5;"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3">
+        <div class="card text-white bg-info shadow-sm">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="card-title text-uppercase mb-0">Talla Promedio</h6>
+                        <h2 class="mb-0 mt-2" id="talla-promedio">-</h2>
+                    </div>
+                    <div>
+                        <i class="bi bi-rulers" style="font-size: 3rem; opacity: 0.5;"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3">
+        <div class="card text-white bg-warning shadow-sm">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="card-title text-uppercase mb-0">Edad Promedio</h6>
+                        <h2 class="mb-0 mt-2" id="edad-promedio">-</h2>
+                    </div>
+                    <div>
+                        <i class="bi bi-calendar3" style="font-size: 3rem; opacity: 0.5;"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-6">
+        <div class="card shadow-sm">
+            <div class="card-header bg-white">
+                <h5 class="mb-0">
+                    <i class="bi bi-gender-ambiguous"></i> Distribución por Género
+                </h5>
+            </div>
+            <div class="card-body">
+                <canvas id="chartGenero"></canvas>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6">
+        <div class="card shadow-sm">
+            <div class="card-header bg-white">
+                <h5 class="mb-0">
+                    <i class="bi bi-building"></i> Atenciones por UPS
+                </h5>
+            </div>
+            <div class="card-body">
+                <canvas id="chartUps"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card shadow-sm">
+            <div class="card-body text-center">
+                <h5 class="mb-4">Acciones Rápidas</h5>
+                <div class="d-grid gap-2 d-md-block">
+                    <a href="/formulario" class="btn btn-primary btn-lg me-2">
+                        <i class="bi bi-plus-circle"></i> Nueva Atención
+                    </a>
+                    <a href="/registros" class="btn btn-secondary btn-lg me-2">
+                        <i class="bi bi-list-ul"></i> Ver Registros
+                    </a>
+                    <button onclick="exportarExcel()" class="btn btn-success btn-lg">
+                        <i class="bi bi-file-earmark-excel"></i> Exportar a Excel
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    let chartGenero = null;
+    let chartUps = null;
+
+    async function cargarEstadisticas() {
+        try {
+            const response = await fetch('/api/estadisticas');
+            const result = await response.json();
+            
+            if (result.success) {
+                const data = result.data;
+                
+                // Actualizar tarjetas
+                $('#total-atenciones').text(data.total_atenciones);
+                $('#peso-promedio').text(data.promedios.peso + ' kg');
+                $('#talla-promedio').text(data.promedios.talla + ' cm');
+                $('#edad-promedio').text(data.promedios.edad + ' años');
+                
+                // Gráfico de género
+                const ctxGenero = document.getElementById('chartGenero').getContext('2d');
+                if (chartGenero) chartGenero.destroy();
+                
+                chartGenero = new Chart(ctxGenero, {
+                    type: 'pie',
+                    data: {
+                        labels: data.por_genero.map(g => g.genero === 'M' ? 'Masculino' : g.genero === 'F' ? 'Femenino' : 'No especificado'),
+                        datasets: [{
+                            data: data.por_genero.map(g => g.cantidad),
+                            backgroundColor: ['#0d6efd', '#dc3545', '#6c757d']
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        plugins: {
+                            legend: {
+                                position: 'bottom'
+                            }
+                        }
+                    }
+                });
+                
+                // Gráfico de UPS
+                const ctxUps = document.getElementById('chartUps').getContext('2d');
+                if (chartUps) chartUps.destroy();
+                
+                // Tomar solo los 10 principales
+                const topUps = data.por_ups.slice(0, 10);
+                
+                chartUps = new Chart(ctxUps, {
+                    type: 'bar',
+                    data: {
+                        labels: topUps.map(u => u.ups),
+                        datasets: [{
+                            label: 'Cantidad de Atenciones',
+                            data: topUps.map(u => u.cantidad),
+                            backgroundColor: '#0d6efd'
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        plugins: {
+                            legend: {
+                                display: false
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true
+                            }
+                        }
+                    }
+                });
+            }
+        } catch (error) {
+            console.error('Error al cargar estadísticas:', error);
+        }
+    }
+
+    async function exportarExcel() {
+        try {
+            Swal.fire({
+                title: 'Exportando...',
+                text: 'Generando archivo Excel',
+                allowOutsideClick: false,
+                didOpen: () => {
+                    Swal.showLoading();
+                }
+            });
+            
+            const response = await fetch('/api/exportar_excel');
+            
+            if (response.ok) {
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'datos_clinicos_' + new Date().toISOString().split('T')[0] + '.xlsx';
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                document.body.removeChild(a);
+                
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Exportado',
+                    text: 'Archivo descargado exitosamente',
+                    timer: 2000
+                });
+            } else {
+                throw new Error('Error en la respuesta');
+            }
+        } catch (error) {
+            Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: 'No se pudo exportar el archivo'
+            });
+        }
+    }
+
+    // Cargar estadísticas al cargar la página
+    $(document).ready(() => {
+        cargarEstadisticas();
+    });
+</script>
+{% endblock %}
